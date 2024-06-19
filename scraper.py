@@ -38,6 +38,7 @@ class Scraper:
             "last_time_scope": "0",
             "byHandler": "true",
         }
+        self.check_pt = ""
 
     def scrape(self, start_date, end_date):
         self.run_id = uuid.uuid4()
@@ -57,14 +58,20 @@ class Scraper:
                 )
                 if not response:
                     break
+
+                # At the last page of the end_date
                 if "No Events" in response.json()["data"]:
                     break
 
-                last_time_scope = response.json().get("last_time_scope")
-                if last_time_scope:
-                    print(
-                        f"Last scraped datetime {datetime.datetime.fromtimestamp(last_time_scope)}"
-                    )
+                last_time_scope_str = response.json().get("last_time_scope")
+
+                # At the most curernt page, break when data repeats
+                if last_time_scope_str == self.check_pt:
+                    break
+                self.check_pt = last_time_scope_str
+
+                last_time_scope = datetime.datetime.fromtimestamp(last_time_scope_str)
+                print(f"Last scraped datetime {last_time_scope}")
 
                 db.append(response.json())
                 page += 1
@@ -77,7 +84,7 @@ class Scraper:
         htmls = json.load(open(f"./{self.run_id}.json"))
         self.parsed_data = []
         for html in htmls:
-            soup = BeautifulSoup(html["data"], "html5lib")
+            soup = BeautifulSoup(html["data"], "html.parser")
             for row in soup.select("tr"):
                 cols = row.select("td")
                 if """Holiday""" in row.text:
