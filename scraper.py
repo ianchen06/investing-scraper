@@ -1,5 +1,6 @@
 import json
 import uuid
+import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -45,8 +46,6 @@ class Scraper:
         self.payload["dateFrom"] = start_date.strftime("%Y-%m-%d")
         self.payload["dateTo"] = end_date.strftime("%Y-%m-%d")
 
-        print(self.payload)
-
         try:
             while True:
                 print(f"Scraping page {page}")
@@ -60,6 +59,13 @@ class Scraper:
                     break
                 if "No Events" in response.json()["data"]:
                     break
+
+                last_time_scope = response.json().get("last_time_scope")
+                if last_time_scope:
+                    print(
+                        f"Last scraped datetime {datetime.datetime.fromtimestamp(last_time_scope)}"
+                    )
+
                 db.append(response.json())
                 page += 1
                 self.payload["limit_from"] = page
@@ -71,7 +77,7 @@ class Scraper:
         htmls = json.load(open(f"./{self.run_id}.json"))
         self.parsed_data = []
         for html in htmls:
-            soup = BeautifulSoup(html["data"])
+            soup = BeautifulSoup(html["data"], "html5lib")
             for row in soup.select("tr"):
                 cols = row.select("td")
                 if """Holiday""" in row.text:
